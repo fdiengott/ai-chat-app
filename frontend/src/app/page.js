@@ -1,5 +1,10 @@
 import styles from "./page.module.css";
+import { Form } from "@/components/Form";
 
 export default function Home() {
-    return <main>hi</main>;
+    return (
+        <main>
+            <Form />
+        </main>
+    );
 }

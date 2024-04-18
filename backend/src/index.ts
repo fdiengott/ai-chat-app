@@ -1,19 +1,20 @@
 import { Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
-import { Server } from "socket.io";
 import { streamText } from "hono/streaming";
 import ollama from "ollama";
 
 const { upgradeWebSocket, websocket } = createBunWebSocket();
 
+const DEFAULT_PORT = 3001;
+
 const app = new Hono();
 
-app.get("/", (c) => {
+app.get("/", c => {
     return c.text("Hello Hono!");
 });
 
-app.get("/chat/:query", async (c) => {
-    return streamText(c, async (stream) => {
+app.get("/chat/:query", async c => {
+    return streamText(c, async stream => {
         const response = await ollama.chat({
             model: "llama2",
             messages: [
@@ -35,11 +36,11 @@ app.get("/chat/:query", async (c) => {
 
 app.get(
     "/ws",
-    upgradeWebSocket((c) => {
+    upgradeWebSocket(c => {
         return {
             onMessage(event, ws) {
                 console.log(`Message from client: ${event.data}`);
-                ws.send("Hello from server!");
+                ws.send(JSON.stringify({ content: "Hello from server!" }));
             },
             onClose: () => {
                 console.log("Connection closed");
@@ -48,9 +49,10 @@ app.get(
     }),
 );
 
+console.log(`server is running on ${process.env.PORT || DEFAULT_PORT}`);
+
 Bun.serve({
     fetch: app.fetch,
+    port: process.env.PORT || DEFAULT_PORT,
     websocket,
 });
-
-export default app;

@@ -1,42 +1,91 @@
-import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
 
 export const Form = () => {
     const [socket, setSocket] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
 
-    useEffect(() => {
-        // Connect to your Socket.IO server
-        const newSocket = io("https://your-backend-api.com/", {
-            // Options like path, transports can be specified here
-            transports: ["websocket"],
-        });
+    const connect = useCallback(() => {
+        const ws = new WebSocket("ws://localhost:3001/ws");
 
-        setSocket(newSocket);
+        ws.onopen = () => {
+            console.log("WebSocket Connected");
+            setSocket(ws);
+        };
 
-        newSocket.on("message", (message) => {
-            setMessages((prev) => [...prev, message]);
-        });
+        ws.onmessage = event => {
+            const message = JSON.parse(event.data);
+            setMessages(prevMessages => [...prevMessages, message]);
+        };
 
-        newSocket.on("connect_error", (err) => {
-            console.error("Connection Failed: ", err);
-        });
+        ws.onerror = error => {
+            console.error("WebSocket Error:", error);
+        };
 
-        return () => newSocket.close();
+        ws.onclose = e => {
+            console.log("WebSocket Disconnected", e);
+            setSocket(null);
+
+            // Check if the disconnection was intentional
+            if (!e.wasClean) {
+                console.log("Attempting to Reconnect...");
+                setTimeout(connect, 1000); // Attempt to reconnect after 1 second
+            }
+        };
+
+        return () => ws.close();
     }, []);
 
+    useEffect(() => {
+        if (!socket) {
+            connect();
+        }
+
+        return () => {
+            if (socket) {
+                socket.close();
+            }
+        };
+    }, [socket]);
+
     const sendMessage = () => {
-        if (socket) {
-            socket.emit("sendMessage", { query: input });
+        console.log(socket, WebSocket.OPEN);
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ query: input }));
         }
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = event => {
         event.preventDefault();
-        sendMessage();
-        setInput(""); // Clear the input after sending
+
+        sendMessage("message from the client");
+        setInput("");
     };
 
-    return <form>form</form>;
+    return (
+        <div>
+            <form onSubmit={handleSubmit}>
+                <label htmlFor="input">Your Query:</label>
+                <input
+                    type="text"
+                    id="input"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Enter your query"
+                />
+                <button type="submit">Send</button>
+            </form>
+            <div>
+                <h2>Messages</h2>
+                <ul>
+                    {messages.map((msg, index) => (
+                        <li key={index}>{JSON.stringify(msg)}</li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    );
 };
