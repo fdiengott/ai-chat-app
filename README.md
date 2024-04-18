@@ -19,4 +19,4 @@ After cloning the repo:
 Once everything is installed:
 
 -   In two terminal instances navigate to the backend and frontend directories and run `bun run dev` and `npm run dev` respectively.
--   Then navigate to [](http://localhost:3000) and type in a prompt!
+-   Then navigate to [http://localhost:3000](http://localhost:3000) and type in a prompt!
