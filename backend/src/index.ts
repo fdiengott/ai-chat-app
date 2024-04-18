@@ -39,11 +39,34 @@ app.get(
     upgradeWebSocket(c => {
         return {
             onMessage(event, ws) {
-                console.log(`Message from client: ${event.data}`);
-                ws.send(JSON.stringify({ content: "Hello from server!" }));
+                streamText(c, async stream => {
+                    const query = JSON.parse(event.data as string).query;
+
+                    const response = await ollama.chat({
+                        model: "llama2",
+                        messages: [
+                            {
+                                role: "system",
+                                content:
+                                    "You are a helpful assistant. Please be cordial and only moderately formal. Keep your responses to one or two sentences.",
+                            },
+                            { role: "user", content: query },
+                        ],
+                        stream: true,
+                    });
+
+                    for await (const chunk of response) {
+                        ws.send(
+                            JSON.stringify({ content: chunk.message.content }),
+                        );
+                    }
+                });
             },
             onClose: () => {
                 console.log("Connection closed");
+            },
+            onOpen: () => {
+                console.log("Connection opened");
             },
         };
     }),

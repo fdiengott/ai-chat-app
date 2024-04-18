@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { updateModelMessages } from "./utils";
+import styles from "./Form.module.css";
 
 export const Form = () => {
     const [socket, setSocket] = useState(null);
@@ -16,8 +18,12 @@ export const Form = () => {
         };
 
         ws.onmessage = event => {
-            const message = JSON.parse(event.data);
-            setMessages(prevMessages => [...prevMessages, message]);
+            const data = JSON.parse(event.data);
+            const newMessage = data.content;
+
+            setMessages(prevMessages =>
+                updateModelMessages(prevMessages, newMessage),
+            );
         };
 
         ws.onerror = error => {
@@ -51,38 +57,56 @@ export const Form = () => {
     }, [socket]);
 
     const sendMessage = () => {
-        console.log(socket, WebSocket.OPEN);
-
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ query: input }));
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            return;
         }
+
+        socket.send(JSON.stringify({ query: input }));
     };
 
     const handleSubmit = event => {
         event.preventDefault();
 
-        sendMessage("message from the client");
+        setMessages(prevMessages => [
+            ...prevMessages,
+            { role: "user", content: input },
+        ]);
+
+        sendMessage();
         setInput("");
     };
 
+    const handleKeyDown = e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            handleSubmit(e);
+        }
+    };
+
     return (
-        <div>
-            <form onSubmit={handleSubmit}>
+        <div className={styles["main-wrapper"]}>
+            <form className={styles["form"]} onSubmit={handleSubmit}>
                 <label htmlFor="input">Your Query:</label>
-                <input
-                    type="text"
+                <textarea
                     id="input"
+                    name="user-input"
+                    className={styles["textarea"]}
                     value={input}
                     onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Enter your query"
+                    rows="5"
+                    cols="40"
                 />
                 <button type="submit">Send</button>
             </form>
-            <div>
+            <div className={styles["messages-wrapper"]}>
                 <h2>Messages</h2>
                 <ul>
                     {messages.map((msg, index) => (
-                        <li key={index}>{JSON.stringify(msg)}</li>
+                        <li className={styles["message"]} key={index}>
+                            <div>{msg.role}</div>
+                            <div>{msg.content}</div>
+                        </li>
                     ))}
                 </ul>
             </div>
