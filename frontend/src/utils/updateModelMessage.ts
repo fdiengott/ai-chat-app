@@ -1,4 +1,12 @@
-export const updateModelMessages = (prevMessages, newMessage) => {
+type MessageType = {
+    role: "user" | "model";
+    content: string;
+};
+
+export const updateModelMessages = (
+    prevMessages: MessageType[],
+    newMessage: string,
+) => {
     const lastMessage = prevMessages.at(-1);
 
     if (lastMessage.role === "user") {
